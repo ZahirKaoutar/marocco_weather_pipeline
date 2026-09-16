@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 import os
-import json
+
 
 file_path1 = "data/ma.csv"
 file_path2 = "data/bronze/weather_raw_2026-09-14.json"
@@ -9,8 +9,6 @@ file_path2 = "data/bronze/weather_raw_2026-09-14.json"
 
 df_bronz = pd.read_json(file_path2)
 df_ma = pd.read_csv(file_path1)
-
-
 val_nums = [
     "temperature_2m_max",
     "temperature_2m_min",
@@ -21,11 +19,22 @@ val_nums = [
     "weathercode"
 ]
 
-for colonne in val_nums:
-    df_bronz[colonne] = pd.to_numeric(
-        df_bronz[colonne],
-        errors="coerce"
-    )
+df_bronz[val_nums] = df_bronz[val_nums].apply(pd.to_numeric, errors="coerce")
+df_bronz["weathercode"] = df_bronz["weathercode"].fillna(0)
+df_bronz=df_bronz.dropna(subset=["time","cities"])
+df_bronz["precipitation_sum"]=df_bronz["precipitation_sum"].fillna(0)
+df_bronz["windgusts_10m_max"]=df_bronz["windgusts_10m_max"].fillna(0)
+df_bronz["precipitation_probability_max"]=df_bronz["precipitation_probability_max"].fillna(0)
+df_bronz=df_bronz.sort_values(["cities","time"])
+val_miss= [
+    "temperature_2m_max", "temperature_2m_min",
+    "windspeed_10m_max", "windgusts_10m_max"
+]
+df_bronz[val_miss]=df_bronz.groupby("cities")[val_miss].transform(lambda x:x.fillna(x.mean()))
+
+
+
+
 
 
 df_bronz["time"] = pd.to_datetime(
@@ -34,7 +43,6 @@ df_bronz["time"] = pd.to_datetime(
 )
 
 
-print("Dates invalides :", df_bronz["time"].isna().sum())
 
 
 
@@ -43,59 +51,49 @@ df_bronz["month"]=df_bronz["time"].dt.month
 df_bronz["year"]=df_bronz["time"].dt.year
 df_bronz["day"]=df_bronz["time"].dt.day
 
-f_gold = pd.read_json(
-    "data/silver/silver_2026-09-14.json"
-)
+# f_gold = pd.read_json(
+#     "data/silver/silver_2026-09-14.json"
+# )
+# Température — valide toute l'année au Maroc
 conditions = [
-    df_bronz["temperature_2m_max"] < 10,
-    df_bronz["temperature_2m_max"] < 20,
-    df_bronz["temperature_2m_max"] < 30,
-    df_bronz["temperature_2m_max"] < 35,
-    df_bronz["temperature_2m_max"] >= 35
+    df_bronz["temperature_2m_max"] < 10,   # Hiver montagne (Ifrane, Azrou)
+    df_bronz["temperature_2m_max"] < 20,   # Hiver côtier
+    df_bronz["temperature_2m_max"] < 30,   # Printemps / Automne
+    df_bronz["temperature_2m_max"] < 38,   # Été normal
+    df_bronz["temperature_2m_max"] >= 38   # Canicule (Marrakech, Fès, Agadir)
 ]
+choices = ["Froide", "Fraîche", "Modérée", "Chaude", "Extrême"]
 
-choices = [
-    "Froide",
-    "Fraîche",
-    "Modérée",
-    "Chaude",
-    "Très chaude"
-]
 df_bronz["temperature_category"] = np.select(
     conditions,
     choices,
     default="Inconnue"
 )
 
+# En hiver les pluies peuvent dépasser 50mm/jour
 conditions = [
     df_bronz["precipitation_sum"] == 0,
     df_bronz["precipitation_sum"] <= 2.5,
     df_bronz["precipitation_sum"] <= 10,
-    df_bronz["precipitation_sum"] > 10
+    df_bronz["precipitation_sum"] <= 30,
+    df_bronz["precipitation_sum"] > 30
 ]
-choices = [
-    "Aucune",
-    "Faible",
-    "Modérée",
-    "Forte"
-]
+choices = ["Aucune", "Faible", "Modérée", "Forte", "Très forte"]
+
 df_bronz["precipitation_category"] = np.select(
     conditions,
     choices,
     default="Inconnue"
 )
+# En hiver le vent peut dépasser 80 km/h (chergui, côte atlantique)
 conditions = [
     df_bronz["windspeed_10m_max"] < 20,
     df_bronz["windspeed_10m_max"] < 40,
     df_bronz["windspeed_10m_max"] < 60,
     df_bronz["windspeed_10m_max"] >= 60
 ]
-choices = [
-    "Faible",
-    "Modéré",
-    "Fort",
-    "Très fort"
-]
+choices = ["Faible", "Modéré", "Fort", "Très fort"]
+
 df_bronz["wind_category"] = np.select(
     conditions,
     choices,
@@ -107,9 +105,9 @@ df_bronz["wind_category"] = np.select(
 
 nombre_doublons = df_bronz.duplicated().sum()
 number_val_nan=df_bronz.isna().sum()
-print("nombre de valeur_null en data:",number_val_nan)
+# print("nombre de valeur_null en data:",number_val_nan)
 
-print("Nombre de doublons :", nombre_doublons)
+# print("Nombre de doublons :", nombre_doublons)
 
 if nombre_doublons != 0:
     df_bronz = df_bronz.drop_duplicates()
@@ -159,22 +157,8 @@ os.makedirs("data/silver", exist_ok=True)
 # print("Fichier Silver créé :", file_path_silver)
 
 
-
-
-
-
-
 file_path_silver = "data/silver/silver_2026-09-14.csv"
-
-
-
-df_silver.to_csv(
-        file_path_silver,
-       
-       index=False
-    )
-
-
+df_silver.to_csv(file_path_silver,index=False)
 print("Fichier Silver créé :", file_path_silver)
 
 
