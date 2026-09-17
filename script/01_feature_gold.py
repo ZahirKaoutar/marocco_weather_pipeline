@@ -2,9 +2,6 @@ import pandas as pd
 import numpy as np
 import os
 
-
-
-
 file_path = "data/silver/silver_2026-09-14.csv"
 
 df_gold = pd.read_csv(file_path)
