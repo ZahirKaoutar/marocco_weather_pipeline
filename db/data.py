@@ -1,6 +1,6 @@
 import pandas as pd
 from sqlalchemy import text
-from connection import engine
+from db.connection import engine
 
 
 def get_top_temperatures():
@@ -45,7 +45,7 @@ def get_periodes_risque_max():
             SELECT w.time, MAX(w.weather_risk_score) as risque_max
             FROM weather w
             GROUP BY w.time
-            ORDER BY risque_max DESC
+            ORDER BY risque_max ASC
             LIMIT 10
         """), conn)
 
@@ -59,3 +59,15 @@ def get_risque_par_ville():
             GROUP BY c.city, w.time
             ORDER BY c.city, risque_max DESC
         """), conn)
+        
+        
+def get_number_ville():
+    with engine.connect() as conn:
+        return pd.read_sql(text("""select count(city) as number_city from cities """),conn)
+def get_maximal_precipitation():
+    with engine.connect() as conn:
+        return pd.read_sql(text(""" select max(precipitation_sum) as max_precipitation from weather"""), conn)
+def get_maximal_temp():
+    with engine.connect() as conn:
+        return pd.read_sql(text(""" select max(temperature_2m_max) as max_temp from weather"""), conn)
+    

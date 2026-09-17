@@ -51,16 +51,13 @@ df_bronz["month"]=df_bronz["time"].dt.month
 df_bronz["year"]=df_bronz["time"].dt.year
 df_bronz["day"]=df_bronz["time"].dt.day
 
-# f_gold = pd.read_json(
-#     "data/silver/silver_2026-09-14.json"
-# )
-# Température — valide toute l'année au Maroc
+
 conditions = [
-    df_bronz["temperature_2m_max"] < 10,   # Hiver montagne (Ifrane, Azrou)
-    df_bronz["temperature_2m_max"] < 20,   # Hiver côtier
-    df_bronz["temperature_2m_max"] < 30,   # Printemps / Automne
-    df_bronz["temperature_2m_max"] < 38,   # Été normal
-    df_bronz["temperature_2m_max"] >= 38   # Canicule (Marrakech, Fès, Agadir)
+    df_bronz["temperature_2m_max"] < 10,   
+    df_bronz["temperature_2m_max"] < 20,   
+    df_bronz["temperature_2m_max"] < 30,  
+    df_bronz["temperature_2m_max"] < 38,   
+    df_bronz["temperature_2m_max"] >= 38  
 ]
 choices = ["Froide", "Fraîche", "Modérée", "Chaude", "Extrême"]
 
@@ -70,7 +67,7 @@ df_bronz["temperature_category"] = np.select(
     default="Inconnue"
 )
 
-# En hiver les pluies peuvent dépasser 50mm/jour
+
 conditions = [
     df_bronz["precipitation_sum"] == 0,
     df_bronz["precipitation_sum"] <= 2.5,
@@ -85,7 +82,7 @@ df_bronz["precipitation_category"] = np.select(
     choices,
     default="Inconnue"
 )
-# En hiver le vent peut dépasser 80 km/h (chergui, côte atlantique)
+
 conditions = [
     df_bronz["windspeed_10m_max"] < 20,
     df_bronz["windspeed_10m_max"] < 40,
@@ -105,9 +102,6 @@ df_bronz["wind_category"] = np.select(
 
 nombre_doublons = df_bronz.duplicated().sum()
 number_val_nan=df_bronz.isna().sum()
-# print("nombre de valeur_null en data:",number_val_nan)
-
-# print("Nombre de doublons :", nombre_doublons)
 
 if nombre_doublons != 0:
     df_bronz = df_bronz.drop_duplicates()
@@ -131,30 +125,8 @@ os.makedirs("data/silver", exist_ok=True)
 
 
 
-# silver_data = df_silver.to_dict(
-#     orient="records"
-# )
 
 
-
-# file_path_silver = "data/silver/silver_2026-09-14.json"
-
-# with open(
-#     file_path_silver,
-#     "w",
-#     encoding="utf-8"
-# ) as f:
-
-#     json.dump(
-#         silver_data,
-#         f,
-#         ensure_ascii=False,
-#         indent=4,
-#         default=str
-#     )
-
-
-# print("Fichier Silver créé :", file_path_silver)
 
 
 file_path_silver = "data/silver/silver_2026-09-14.csv"
