@@ -39,6 +39,7 @@ import json
 import os
 import datetime
 
+
 def extraction():
 # Lire le fichier des villes
     df_cities = pd.read_csv("data/ma.csv")
@@ -118,5 +119,9 @@ def extraction():
             indent=4
         )
 
+    print("Fichier Bronze créé :", output_path)
 
     print("Fichier Bronze créé :", output_path)
+
+if __name__ == "__main__":
+    extraction()
