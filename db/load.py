@@ -1,26 +1,37 @@
+import os
 import pandas as pd
 from sqlalchemy import text
-from connection import engine
 from datetime import datetime
+from db.connection import engine
+from db.tables import create_tables
 
-today = datetime.now().strftime("%Y-%m-%d")
-df = pd.read_csv(f"data/gold/weather_gold.csv")
-df["time"] = pd.to_datetime(df["time"])
 
-cities = df[["city", "lat", "lng"]].drop_duplicates(subset="city")
+def load_postgres():
+    # S'assurer que les tables existent avant l'insertion
+    create_tables()
 
-with engine.begin() as conn:
-    for _, row in cities.iterrows():
-        conn.execute(text("""
-            INSERT INTO cities (city, lat, lng)
-            VALUES (:city, :lat, :lng)
-            ON CONFLICT (city) DO NOTHING
-        """), {"city": row["city"], "lat": row["lat"], "lng": row["lng"]})
-    for _,row in df.iterrows():
+    gold_path = "data/gold/weather_gold.csv"
+    if not os.path.exists(gold_path):
+        raise FileNotFoundError(f"Fichier introuvable : {gold_path}")
+
+    df = pd.read_csv(gold_path)
+    df["time"] = pd.to_datetime(df["time"])
+
+    cities = df[["city", "lat", "lng"]].drop_duplicates(subset="city")
+
+    with engine.begin() as conn:
+        for _, row in cities.iterrows():
+            conn.execute(text("""
+                INSERT INTO cities (city, lat, lng)
+                VALUES (:city, :lat, :lng)
+                ON CONFLICT (city) DO NOTHING
+            """), {"city": row["city"], "lat": float(row["lat"]), "lng": float(row["lng"])})
+
+        for _, row in df.iterrows():
             city_id = conn.execute(
-            text("SELECT id FROM cities WHERE city = :city"),
-            {"city": row["city"]}
-                ).scalar()
+                text("SELECT id FROM cities WHERE city = :city"),
+                {"city": row["city"]}
+            ).scalar()
 
             conn.execute(
                 text("""
@@ -56,6 +67,10 @@ with engine.begin() as conn:
                     "weather_risk_score": float(row["weather_risk_score"]),
                     "risk_category": str(row["risk_category"])
                 }
-            )      
-   
-   
+            )
+
+    print(f"Chargement terminé avec succès ! {len(df)} enregistrements traités.")
+
+
+if __name__ == "__main__":
+    load_postgres()
