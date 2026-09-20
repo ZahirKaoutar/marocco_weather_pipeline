@@ -99,41 +99,46 @@ def get_all_dates():
         """), conn)["date"].tolist()
 
 
-def get_meteo_detail(ville=None, date=None, niveau_risque=None):
-    """Récupère les données météo détaillées avec filtres optionnels."""
-    filters = []
-    params = {}
-
-    if ville:
-        filters.append("c.city = :ville")
-        params["ville"] = ville
-    if date:
-        filters.append("TO_CHAR(w.time, 'YYYY-MM-DD') = :date")
-        params["date"] = date
-    if niveau_risque and niveau_risque != "Tous":
-        filters.append("w.risk_category = :niveau_risque")
-        params["niveau_risque"] = niveau_risque
-
-    where_clause = "WHERE " + " AND ".join(filters) if filters else ""
-
-    query = text(f"""
-        SELECT c.city,
-               TO_CHAR(w.time, 'YYYY-MM-DD') as date,
-               w.temperature_2m_max,
-               w.temperature_2m_min,
-               w.temperature_moyenne_jour,
-               w.temperature_category,
-               w.precipitation_sum,
-               w.precipitation_category,
-               w.windspeed_10m_max,
-               w.wind_category,
-               w.weather_risk_score,
-               w.risk_category
-        FROM cities c
-        INNER JOIN weather w ON c.id = w.city_id
-        {where_clause}
-        ORDER BY c.city, w.time
-    """)
-
+def get_categories_risque_aujourdhui():
     with engine.connect() as conn:
-        return pd.read_sql(query, conn, params=params)
+        return pd.read_sql(text("""
+            SELECT w.risk_category, COUNT(DISTINCT c.city) AS nombre_villes
+            FROM weather w inner join cities c on c.id=w.city_id
+            WHERE w.time = CURRENT_DATE
+            GROUP BY w.risk_category
+            ORDER BY nombre_villes DESC
+        """), conn)
+
+
+def get_categories_temperature_aujourdhui():
+    with engine.connect() as conn:
+        return pd.read_sql(text("""
+            SELECT w.temperature_category, COUNT(DISTINCT c.city) AS nombre_villes
+             FROM weather w inner join cities c on c.id=w.city_id
+            WHERE w.time = CURRENT_DATE
+            GROUP BY w.temperature_category
+            ORDER BY nombre_villes DESC
+        """), conn)
+
+
+def get_categories_precipitation_aujourdhui():
+    with engine.connect() as conn:
+        return pd.read_sql(text("""
+            SELECT w.precipitation_category, COUNT(DISTINCT c.city) AS nombre_villes
+            FROM weather w inner join cities c on  c.id=w.city_id
+            WHERE w.time = CURRENT_DATE
+            GROUP BY w.precipitation_category
+            ORDER BY nombre_villes DESC
+        """), conn)
+
+
+def get_categories_vent_aujourdhui():
+    with engine.connect() as conn:
+        return pd.read_sql(text("""
+            SELECT w.wind_category, COUNT(DISTINCT c.city) AS nombre_villes
+             FROM weather w inner join cities c on c.id=w.city_id
+            WHERE w.time = CURRENT_DATE
+            GROUP BY w.wind_category
+            ORDER BY nombre_villes DESC
+        """), conn)
+

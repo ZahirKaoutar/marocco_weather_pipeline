@@ -1,0 +1,37 @@
+@startuml
+!theme plain
+hide circle
+skinparam linetype ortho
+
+entity "cities" as CITIES {
+  *id : Integer <<PK>>
+  --
+  city : String
+  lat : Float
+  lng : Float
+}
+
+entity "weather" as WEATHER {
+  *id : Integer <<PK>>
+  --
+  *city_id : Integer <<FK>>
+  time : Date
+  day : Integer
+  month : Integer
+  year : Integer
+  temperature_2m_max : Float
+  temperature_2m_min : Float
+  temperature_moyenne_jour : Float
+  temperature_category : String
+  precipitation_sum : Float
+  precipitation_category : String
+  windspeed_10m_max : Float
+  windgusts_10m_max : Float
+  wind_category : String
+  weather_risk_score : Float
+  risk_category : String
+}
+
+CITIES ||..o{ WEATHER
+@enduml
+https://trello.com/invite/b/6aaf05319e2781d0af22142c/ATTI566f9d09b6c494c2c0523071449808a900B58050/mm

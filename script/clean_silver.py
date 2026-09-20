@@ -5,14 +5,17 @@ import pandas as pd
 import numpy as np
 
 
+from pathlib import Path
+
 def transformation():
-    file_path1 = "data/ma.csv"
+    BASE_DIR = Path(__file__).resolve().parents[1]
+    file_path1 = BASE_DIR / "data/ma.csv"
     today_date = datetime.now().strftime("%Y-%m-%d")
-    file_path2 = f"data/bronze/weather_raw_{today_date}.json"
+    file_path2 = BASE_DIR / f"data/bronze/weather_raw_{today_date}.json"
 
     # Vérifier l'existence du fichier bronze du jour ou prendre le plus récent
-    if not os.path.exists(file_path2):
-        bronze_files = sorted(glob.glob("data/bronze/weather_raw_*.json"))
+    if not file_path2.exists():
+        bronze_files = sorted(glob.glob(str(BASE_DIR / "data/bronze/weather_raw_*.json")))
         if bronze_files:
             file_path2 = bronze_files[-1]
             print(f"Fichier du jour non trouvé, utilisation du dernier fichier bronze : {file_path2}")
@@ -120,12 +123,12 @@ def transformation():
     else:
         df_silver = df_bronz
 
-    os.makedirs("data/silver", exist_ok=True)
+    os.makedirs(BASE_DIR / "data/silver", exist_ok=True)
 
-    file_path_silver = f"data/silver/silver_{today_date}.csv"
+    file_path_silver = BASE_DIR / f"data/silver/silver_{today_date}.csv"
     df_silver.to_csv(file_path_silver, index=False)
     # Écrire aussi dans un fichier générique pour les scripts suivants
-    df_silver.to_csv("data/silver/weather_silver.csv", index=False)
+    df_silver.to_csv(BASE_DIR / "data/silver/weather_silver.csv", index=False)
 
     print("Fichier Silver créé :", file_path_silver)
     print(df_silver.head())

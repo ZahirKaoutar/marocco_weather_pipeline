@@ -3,19 +3,21 @@ import glob
 from datetime import datetime
 import pandas as pd
 import numpy as np
-
+from pathlib import Path
 
 def create_gold():
+    BASE_DIR = Path(__file__).resolve().parents[1]
+    
     today_date = datetime.now().strftime("%Y-%m-%d")
-    file_path = f"data/silver/silver_{today_date}.csv"
+    file_path = BASE_DIR / f"data/silver/silver_{today_date}.csv"
 
-    if not os.path.exists(file_path):
-        fallback = "data/silver/weather_silver.csv"
-        if os.path.exists(fallback):
+    if not file_path.exists():
+        fallback = BASE_DIR / "data/silver/weather_silver.csv"
+        if fallback.exists():
             file_path = fallback
             print(f"Fichier silver du jour non trouvé, utilisation de : {file_path}")
         else:
-            silver_files = sorted(glob.glob("data/silver/silver_*.csv"))
+            silver_files = sorted(glob.glob(str(BASE_DIR / "data/silver/silver_*.csv")))
             if silver_files:
                 file_path = silver_files[-1]
                 print(f"Utilisation du dernier fichier silver : {file_path}")
@@ -78,14 +80,35 @@ def create_gold():
         elif code in [95, 96, 99]:                  return 100
         else:                                       return 0
 
-    weathercode_col = "weathercode" if "weathercode" in df_gold.columns else "weather_code"
-    df_gold["score_code_weather"] = df_gold[weathercode_col].apply(weather_to_score)
+ 
+    df_gold["score_code_weather"] = df_gold["weathercode"].apply(weather_to_score)
 
+    # =====================================================================
+    # JUSTIFICATION DU WEATHER RISK SCORE (Pour l'entreprise de livraison)
+    # =====================================================================
+    # Variables utilisées : 
+    #   - Température moyenne : Risque pour le livreur (insolation ou verglas) et le véhicule.
+    #   - Précipitations : Risque d'inondations, visibilité réduite et routes glissantes.
+    #   - Vent et Rafales : Risque de déviation des véhicules (deux-roues ou camions légers).
+    #   - Code Météo (WMO) : Indicateur global (orages, neige) aggravant les conditions.
+    # 
+    # Seuils choisis (normalisation de 0 à 100) :
+    #   - Température : Pénalité si > 30°C (risque chaleur) ou < 10°C (risque froid). 
+    #   - Pluie : Le risque devient maximal (100) à partir de 40 mm/jour (fortes précipitations au Maroc).
+    #   - Vent max : Risque maximal à 80 km/h (seuil critique de conduite).
+    #   - Rafales : Risque maximal à 100 km/h (danger imminent pour les livreurs).
+    #
+    # Méthode de calcul (Pondération totale = 1.00) :
+    #   La pluie est le facteur le plus bloquant pour les livraisons (35%).
+    #   Le vent et les rafales sont séparés (20% + 20% = 40%) pour pénaliser les pics de danger.
+    #   La température (15%) et le code météo global (10%) ajustent le score final.
+    # =====================================================================
+    
     df_gold["weather_risk_score"] = (
         df_gold["score_temperature"] * 0.15
-        + df_gold["score_pluie"] * 0.30
-        + df_gold["score_vent"] * 0.25
-        + df_gold["score_rafales"] * 0.30
+        + df_gold["score_pluie"] * 0.35
+        + df_gold["score_vent"] * 0.20
+        + df_gold["score_rafales"] * 0.20
         + df_gold["score_code_weather"] * 0.10
     )
 
@@ -121,15 +144,15 @@ def create_gold():
         ]
     ]
 
-    print("\n========== GOLD ==========\n")
-    print(gold.head())
 
-    os.makedirs("data/gold", exist_ok=True)
-    gold_path = "data/gold/weather_gold.csv"
+
+    os.makedirs(BASE_DIR / "data/gold", exist_ok=True)
+    gold_path = BASE_DIR / "data/gold/weather_gold.csv"
     gold.to_csv(gold_path, index=False)
     print(f"\nFichier Gold créé avec succès : {gold_path}")
     return gold
 
 
-if __name__ == "__main__":
+if __name__=='main':
+
     create_gold()

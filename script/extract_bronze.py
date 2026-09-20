@@ -1,63 +1,24 @@
-# import pandas as pd
-# import datetime
-# import json
-# import os
-
-# file_path = "api/weather_data_2026-09-14.csv"
-
-# df_weather = pd.read_csv(file_path)
-
-# bronze_data = df_weather.to_dict(orient="records")
-
-
-# os.makedirs("data/bronze", exist_ok=True)
-
-# #
-# today_date = datetime.datetime.now().strftime("%Y-%m-%d")
-
-
-# output_path = f"data/bronze/weather_raw_{today_date}.json"
-
-# with open(output_path, "w", encoding="utf-8") as file:
-#     json.dump(
-#         bronze_data,
-#         file,
-#         ensure_ascii=False,
-#         indent=4
-#     )
-
-# print("Fichier Bronze créé :", output_path)
-
-
-
-
-
-
 import pandas as pd
 import requests
 import json
 import os
 import datetime
-
+import time
+from pathlib import Path
 
 def extraction():
-# Lire le fichier des villes
-    df_cities = pd.read_csv("data/ma.csv")
-
+    BASE_DIR = Path(__file__).resolve().parents[1]
+    cities_file = BASE_DIR / "data" / "ma.csv"
+    df_cities = pd.read_csv(cities_file)
     all_weather = []
-
-
-    # Boucle sur les villes
-    for index, ville in df_cities.iterrows():
+    for _, ville in df_cities.iterrows():
 
         city = ville["city"]
         lat = ville["lat"]
         lng = ville["lng"]
 
-        print("Récupération :", city)
-
+        print(f"Récupération : {city}")
         url = "https://api.open-meteo.com/v1/forecast"
-
         params = {
             "latitude": lat,
             "longitude": lng,
@@ -73,44 +34,106 @@ def extraction():
             "timezone": "Africa/Casablanca"
         }
 
-        response = requests.get(url, params=params)
+        max_retries = 3
+        retry_delay = 2
+        success = False
+        for attempt in range(max_retries):
 
-        data = response.json()
+            try:
 
-        # Transformer les données météo en DataFrame
-        df_weather = pd.DataFrame(data["daily"])
+                response = requests.get(
+                    url,
+                    params=params,
+                    timeout=10
+                )
 
-        # Ajouter les informations de la ville
-        df_weather["city"] = city
-        df_weather["lat"] = lat
-        df_weather["lng"] = lng
+                response.raise_for_status()
 
-        # Ajouter à la liste
-        all_weather.append(df_weather)
+                data = response.json()
 
+                if "daily" not in data:
+                    raise ValueError(
+                        "La clé 'daily' est absente de la réponse de l'API."
+                    )
+                df_weather = pd.DataFrame(data["daily"])
+                df_weather["city"] = city
+                df_weather["lat"] = lat
+                df_weather["lng"] = lng
+                all_weather.append(df_weather)
 
-    # Regrouper toutes les villes
-    df_final = pd.concat(all_weather, ignore_index=True)
+                success = True
+                break
 
+            except requests.exceptions.Timeout:
 
-    # Transformer en liste de dictionnaires
-    bronze_data = df_final.to_dict(orient="records")
+                print(
+                    f"Timeout pour {city} "
+                    f"(Tentative {attempt + 1}/{max_retries})"
+                )
 
+            except requests.exceptions.HTTPError as err_http:
 
-    # Créer le dossier Bronze
-    os.makedirs("data/bronze", exist_ok=True)
+                print(
+                    f"Erreur HTTP pour {city} : {err_http} "
+                    f"(Tentative {attempt + 1}/{max_retries})"
+                )
 
+            except requests.exceptions.RequestException as e:
 
-    # Date
-    today_date = datetime.datetime.now().strftime("%Y-%m-%d")
+                print(
+                    f"Erreur de connexion pour {city} : {e} "
+                    f"(Tentative {attempt + 1}/{max_retries})"
+                )
 
+            except ValueError as ve:
 
-    # Fichier de sortie
-    output_path = f"data/bronze/weather_raw_{today_date}.json"
+                print(
+                    f"Données invalides pour {city} : {ve} "
+                    f"(Tentative {attempt + 1}/{max_retries})"
+                )
+            if attempt < max_retries - 1:
+                time.sleep(retry_delay)
+        if not success:
 
+            print(
+                f"Impossible de récupérer les données pour {city} "
+                f"après {max_retries} tentatives. "
+                f"On ignore cette ville."
+            )
 
-    # Sauvegarder
-    with open(output_path, "w", encoding="utf-8") as file:
+    if not all_weather:
+
+        raise Exception(
+            "Aucune donnée n'a pu être récupérée "
+            "pour l'ensemble des villes."
+        )
+
+    df_final = pd.concat(
+        all_weather,
+        ignore_index=True
+    )
+
+    bronze_data = df_final.to_dict(
+        orient="records"
+    )
+    
+    bronz_dir = BASE_DIR / "data" / "bronze"
+
+    os.makedirs(
+        bronz_dir,
+        exist_ok=True
+    )
+    today_date = datetime.datetime.now().strftime(
+        "%Y-%m-%d"
+    )
+    
+    output_path = bronz_dir / f"weather_raw_{today_date}.json" 
+
+    with open(
+        output_path,
+        "w",
+        encoding="utf-8"
+    ) as file:
 
         json.dump(
             bronze_data,
@@ -119,9 +142,9 @@ def extraction():
             indent=4
         )
 
-    print("Fichier Bronze créé :", output_path)
-
-    print("Fichier Bronze créé :", output_path)
-
-if __name__ == "__main__":
+    print(
+        "Fichier Bronze créé :",
+        output_path
+    )
+if __name__=='main':
     extraction()

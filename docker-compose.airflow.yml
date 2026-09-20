@@ -31,6 +31,7 @@ services:
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__WEBSERVER__SECRET_KEY: "mon-secret-airflow"
       PYTHONPATH: /opt/airflow
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
@@ -64,6 +65,7 @@ services:
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__WEBSERVER__SECRET_KEY: "mon-secret-airflow"
       PYTHONPATH: /opt/airflow
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432

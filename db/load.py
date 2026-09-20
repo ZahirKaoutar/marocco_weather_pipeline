@@ -6,12 +6,15 @@ from db.connection import engine
 from db.tables import create_tables
 
 
+from pathlib import Path
+
 def load_postgres():
     # S'assurer que les tables existent avant l'insertion
     create_tables()
 
-    gold_path = "data/gold/weather_gold.csv"
-    if not os.path.exists(gold_path):
+    BASE_DIR = Path(__file__).resolve().parents[1]
+    gold_path = BASE_DIR / "data/gold/weather_gold.csv"
+    if not gold_path.exists():
         raise FileNotFoundError(f"Fichier introuvable : {gold_path}")
 
     df = pd.read_csv(gold_path)
